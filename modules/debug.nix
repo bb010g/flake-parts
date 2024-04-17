@@ -9,13 +9,12 @@ let
     ;
   inherit (flake-parts-lib)
     mkPerSystemOption
+    mkSubmoduleOptions
     ;
 
-  mkDebugConfig = { config, options, extendModules }: config // {
-    inherit config;
+  mkDebugConfig = { config, extendModules, lib, options }: {
+    inherit config extendModules lib options;
     inherit (config) _module;
-    inherit options;
-    inherit extendModules;
   };
 in
 {
@@ -49,8 +48,16 @@ in
         See [Expore and debug option values](../debug.html) for more examples.
       '';
     };
+    flake = mkSubmoduleOptions {
+      debug = mkOption {
+        description = ''
+          Values to return when [`debug = true`](#opt-debug).
+        '';
+        type = types.lazyAttrsOf types.raw;
+      };
+    };
     perSystem = mkPerSystemOption
-      ({ options, config, extendModules, ... }: {
+      ({ config, extendModules, lib, options, ... }: {
         _file = ./formatter.nix;
         options = {
           debug = mkOption {
@@ -62,14 +69,14 @@ in
           };
         };
         config = {
-          debug = mkDebugConfig { inherit config options extendModules; };
+          debug = mkDebugConfig { inherit config lib options extendModules; };
         };
       });
   };
 
   config = mkIf config.debug {
     flake = {
-      debug = mkDebugConfig { inherit config options extendModules; };
+      debug = mkDebugConfig { inherit config extendModules lib options; };
       allSystems = mapAttrs (_s: c: c.debug) config.allSystems;
     } // optionalAttrs (builtins?currentSystem) {
       currentSystem = (getSystem builtins.currentSystem).debug;
